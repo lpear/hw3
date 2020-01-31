@@ -17,11 +17,11 @@ def ngrams(n, text):
 
     to_return = []
     padded_text = start_pad(n) + text
-    i = 0
+    i = n
     while i < len(padded_text):
-        print("prefix", padded_text[0 : (i + n - 1)])
-        print("affix", text[i + n])
-        to_return.append([padded_text[0 : (i + n - 1)], text[i + n]])
+        print("prefix", padded_text[(i - n):i])
+        print("affix", text[i - n])
+        to_return.append([padded_text[(i - n):i], text[i - n]])
         i = i + 1
     return to_return
 
