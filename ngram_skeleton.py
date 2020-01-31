@@ -50,14 +50,21 @@ class NgramModel(object):
     ''' A basic n-gram model using add-k smoothing '''
 
     def __init__(self, n, k):
+        self.n = n
+        self.k = k
+        self.vocab = []
+        '''need internal counts... and what do they mean by n is the "ordering"?'''
         pass
 
     def get_vocab(self):
         ''' Returns the set of characters in the vocab '''
+        return self.vocab
         pass
 
     def update(self, text):
         ''' Updates the model n-grams based on text '''
+        
+        '''use str.split()?'''
         pass
 
     def prob(self, context, char):
