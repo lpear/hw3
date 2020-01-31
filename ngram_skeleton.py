@@ -14,6 +14,15 @@ def start_pad(n):
 def ngrams(n, text):
     ''' Returns the ngrams of the text as tuples where the first element is
         the length-n context and the second is the character '''
+    '''
+    if n == 0:
+        all context should be empty strings
+    else:
+        toReturn = []
+        for i in len(text):
+            toReturn.append([text[0, i - 1], i])
+    return toReturn
+    '''
     pass
 
 def create_ngram_model(model_class, path, n=2, k=0):
