@@ -14,16 +14,16 @@ def start_pad(n):
 def ngrams(n, text):
     ''' Returns the ngrams of the text as tuples where the first element is
         the length-n context and the second is the character '''
-    '''
-    if n == 0:
-        all context should be empty strings
-    else:
-        toReturn = []
-        for i in len(text):
-            toReturn.append([text[0, i - 1], i])
-    return toReturn
-    '''
-    pass
+
+    to_return = []
+    padded_text = start_pad(n) + text
+    i = 0
+    while i < len(padded_text):
+        print("prefix", padded_text[0 : (i + n - 1)])
+        print("affix", text[i + n])
+        to_return.append([padded_text[0 : (i + n - 1)], text[i + n]])
+        i = i + 1
+    return to_return
 
 def create_ngram_model(model_class, path, n=2, k=0):
     ''' Creates and returns a new n-gram model trained on the city names
