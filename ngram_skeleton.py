@@ -53,6 +53,7 @@ class NgramModel(object):
         self.n = n
         self.k = k
         self.vocab = []
+        count_dict = {}
         '''need internal counts... and what do they mean by n is the "ordering"?'''
         pass
 
@@ -65,6 +66,9 @@ class NgramModel(object):
         ''' Updates the model n-grams based on text '''
         
         '''use str.split()?'''
+        
+        '''if not already in dict then count_dict.add(?, 1)
+        else update count_dict'''
         pass
 
     def prob(self, context, char):
