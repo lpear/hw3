@@ -19,8 +19,6 @@ def ngrams(n, text):
     padded_text = start_pad(n) + text
     i = n
     while i < len(padded_text):
-        print("prefix", padded_text[(i - n):i])
-        print("affix", text[i - n])
         to_return.append([padded_text[(i - n):i], text[i - n]])
         i = i + 1
     return to_return
@@ -52,43 +50,98 @@ class NgramModel(object):
     def __init__(self, n, k):
         self.n = n
         self.k = k
-        self.vocab = []
-        count_dict = {}
-        '''need internal counts... and what do they mean by n is the "ordering"?'''
+        self.vocab_count = dict()
+        self.context_count = dict()
+        self.ngrams = []
         pass
 
     def get_vocab(self):
         ''' Returns the set of characters in the vocab '''
-        return self.vocab
-        pass
+        return set(self.vocab_count.keys())
 
     def update(self, text):
-        ''' Updates the model n-grams based on text '''
-        
-        '''use str.split()?'''
-        
-        '''if not already in dict then count_dict.add(?, 1)
-        else update count_dict'''
-        pass
+        ''' Update the context dictionary '''
+        curr_ngram = ngrams(self.n, text)
+        self.ngrams += curr_ngram
+
+        for ngram in curr_ngram:
+            if ngram[0] not in self.context_count:
+                self.context_count[ngram[0]] = 1
+            else:
+                self.context_count[ngram[0]] += 1
+            
+            if ngram[1] not in self.vocab_count:
+                self.vocab_count[ngram[1]] = 1
+            else:
+                self.vocab_count[ngram[1]] += 1
 
     def prob(self, context, char):
         ''' Returns the probability of char appearing after context '''
-        pass
+        ''' ngram(self.text, vocab.get(context+char) +k / count(all context) +k*V)'''
+        ''' stuff = ngram(self.n, self.text) '''
+
+        V = len(self.vocab_count)
+        if context not in self.context_count:
+            return 1 / V
+        
+        # Check for (context + char)
+        count = 0
+        for ngram in self.ngrams:
+            if ngram == [context, char]:
+                count += 1
+
+        return (count + self.k) / (self.context_count[context] + self.k * V)
 
     def random_char(self, context):
         ''' Returns a random character based on the given context and the 
             n-grams learned by this model '''
-        pass
+        r = random.random()
+        sortedVocab = sorted(list(self.vocab_count.keys()))
+        for i in range(len(sortedVocab)):
+            probSum = 0
+            for j in range(i):
+                probSum += self.prob(context, sortedVocab[j])
 
-    def random_text(self, length):
+            if probSum <= r and r < probSum + self.prob(context, sortedVocab[i]):
+                return sortedVocab[i]
+
+
+        return sortedVocab[i]
+
+
+    def random_text(self, length):  
         ''' Returns text of the specified character length based on the
             n-grams learned by this model '''
-        pass
+        text = ''
+        context = ''
+        for i in range(self.n):
+            context += '~'
+        
+        for i in range(length):
+            # Generate a random character
+            char = self.random_char(context)
+            text += char
+
+            # Update context by replacing last character in context with generated char
+            # and removing the first character
+            context += char
+            context = context[1:]
+
+        return text
+        
 
     def perplexity(self, text):
         ''' Returns the perplexity of text based on the n-grams learned by
             this model '''
-        pass
+
+            # TODO: probably not right
+            stuff = ngrams(self.n, text)
+            product = o
+
+            for i in stuff:
+                product += math.log(self.prob(i[0], i[1]))
+
+            return math.pow(product, (1 /self.n))  
 
 ################################################################################
 # Part 2: N-Gram Model with Interpolation
