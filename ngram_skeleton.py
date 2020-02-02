@@ -134,14 +134,19 @@ class NgramModel(object):
         ''' Returns the perplexity of text based on the n-grams learned by
             this model '''
 
-            # TODO: probably not right
-            stuff = ngrams(self.n, text)
-            product = o
+        text_ngram = ngrams(self.n, text)
+        sum_logs = 0
 
-            for i in stuff:
-                product += math.log(self.prob(i[0], i[1]))
+        # for i in text_ngram:
+        #     sum_logs *= self.prob(i[0], i[1])
 
-            return math.pow(product, (1 /self.n))  
+        for i in text_ngram:
+            probability = self.prob(i[0], i[1])
+            if probability == 0:
+                return float('inf')
+            sum_logs += -math.log(probability)
+
+        return math.pow(sum_logs, -(1 /len(text_ngram))) 
 
 ################################################################################
 # Part 2: N-Gram Model with Interpolation
