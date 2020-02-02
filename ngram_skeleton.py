@@ -1,4 +1,5 @@
 import math, random
+from os import listdir
 
 ################################################################################
 # Part 0: Utility Functions
@@ -19,7 +20,7 @@ def ngrams(n, text):
     padded_text = start_pad(n) + text
     i = n
     while i < len(padded_text):
-        to_return.append([padded_text[(i - n):i], text[i - n]])
+        to_return.append((padded_text[(i - n):i], text[i - n]))
         i = i + 1
     return to_return
 
@@ -52,7 +53,7 @@ class NgramModel(object):
         self.k = k
         self.vocab_count = dict()
         self.context_count = dict()
-        self.ngrams = []
+        self.ngrams = dict()
         pass
 
     def get_vocab(self):
@@ -62,9 +63,11 @@ class NgramModel(object):
     def update(self, text):
         ''' Update the context dictionary '''
         curr_ngram = ngrams(self.n, text)
-        self.ngrams += curr_ngram
-
         for ngram in curr_ngram:
+            if ngram not in self.ngrams:
+                self.ngrams[ngram] = 1
+            else:
+                self.ngrams[ngram] += 1
             if ngram[0] not in self.context_count:
                 self.context_count[ngram[0]] = 1
             else:
@@ -85,10 +88,7 @@ class NgramModel(object):
             return 1 / V
         
         # Check for (context + char)
-        count = 0
-        for ngram in self.ngrams:
-            if ngram == [context, char]:
-                count += 1
+        count = 0 if ngram not in self.ngrams else self.ngrams[ngram]
 
         return (count + self.k) / (self.context_count[context] + self.k * V)
 
@@ -137,16 +137,15 @@ class NgramModel(object):
         text_ngram = ngrams(self.n, text)
         sum_logs = 0
 
-        # for i in text_ngram:
-        #     sum_logs *= self.prob(i[0], i[1])
-
         for i in text_ngram:
             probability = self.prob(i[0], i[1])
             if probability == 0:
                 return float('inf')
-            sum_logs += -math.log(probability)
+            sum_logs += math.log(1/ probability)
 
-        return math.pow(sum_logs, -(1 /len(text_ngram))) 
+        sum_logs = math.exp(sum_logs)
+
+        return math.pow(sum_logs, 1 / len(text_ngram)) 
 
 ################################################################################
 # Part 2: N-Gram Model with Interpolation
@@ -156,20 +155,94 @@ class NgramModelWithInterpolation(NgramModel):
     ''' An n-gram model with interpolation '''
 
     def __init__(self, n, k):
-        pass
+        super().__init__(n, k)
+        self.lambdas = []
+        for i in range(self.n + 1):
+            self.lambdas.append(1/(self.n + 1))
 
-    def get_vocab(self):
-        pass
+    # def get_vocab(self):
+    #     pass
 
     def update(self, text):
-        pass
+        # Generate update for n = 0 ... n
+        for i in range(self.n + 1):
+            curr_ngram = ngrams(i, text)
+            for ngram in curr_ngram:
+                if ngram not in self.ngrams:
+                    self.ngrams[ngram] = 1
+                else:
+                    self.ngrams[ngram] += 1
+                if ngram[0] not in self.context_count:
+                    self.context_count[ngram[0]] = 1
+                else:
+                    self.context_count[ngram[0]] += 1
+                
+                if ngram[1] not in self.vocab_count:
+                    self.vocab_count[ngram[1]] = 1
+                else:
+                    self.vocab_count[ngram[1]] += 1
+        
+        
 
     def prob(self, context, char):
-        pass
+        to_return = 0
+        for i in range(0, len(self.lambdas)):
+            to_return += self.lambdas[i] * super().prob(context[i:], char)
+
+        return to_return
+
+    '''helper function to override lambdas'''   
+    def override_lambdas(self, lst):
+        sum_lam = 0
+        for weight in lst:
+            sum_lam += weight
+        if sum_lam == 1 and len(lst) == self.n + 1:
+            self.lambdas = lst
 
 ################################################################################
 # Part 3: Your N-Gram Model Experimentation
 ################################################################################
 
 if __name__ == '__main__':
-    pass
+    '''Possible ideas to consider:
+    --utilizing a special end-of-text character
+    --trying a new method for determining the vocab
+    --improving how your model handles novel characters'''
+
+    # lookup = {0:'af', 1:'cn', 2:'de', 3:'fi', 4:'fr',
+    #           5:'in', 6:'ir', 7:'pk', 8:'za'}
+
+    # Load training data
+    directory = "train/" 
+    models_lst = []
+    files = listdir(directory)
+    
+    for i in range(0, len(files)):
+        models_lst.append(create_ngram_model_lines(NgramModel, directory + files[i]))
+
+    correct = 0
+    incorrect = 0
+    for i in range(len(files)):
+        lines = []
+        with open(directory + files[i], encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                line = line.strip()
+                lines.append(line)
+        for line in lines:
+            min_perp = 100
+            best_idx = 0
+            for j in range(len(models_lst)):
+                model = models_lst[j]
+                curr_perp = model.perplexity(line)
+                if curr_perp < min_perp:
+                    min_perp = curr_perp
+                    best_idx = j
+            if best_idx == i:
+                correct += 1
+            else:
+                incorrect += 1
+        print('Percent Correct = ' + str(correct/(correct + incorrect)))
+        correct = 0
+        incorrect = 0
+
+
