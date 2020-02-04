@@ -7,6 +7,9 @@ from os import listdir
 
 COUNTRY_CODES = ['af', 'cn', 'de', 'fi', 'fr', 'in', 'ir', 'pk', 'za']
 
+lookup = {0:'af', 1:'cn', 2:'de', 3:'fi', 4:'fr',
+          5:'in', 6:'ir', 7:'pk', 8:'za'}
+
 def start_pad(n):
     ''' Returns a padding string of length n to append to the front of text
         as a pre-processing step to building n-grams '''
@@ -86,7 +89,9 @@ class NgramModel(object):
         V = len(self.vocab_count)
         if context not in self.context_count:
             return 1 / V
-        
+            
+        ngram = (context, char)
+
         # Check for (context + char)
         count = 0 if ngram not in self.ngrams else self.ngrams[ngram]
 
@@ -154,11 +159,15 @@ class NgramModel(object):
 class NgramModelWithInterpolation(NgramModel):
     ''' An n-gram model with interpolation '''
 
-    def __init__(self, n, k):
+    def __init__(self, n, k, lambdas = []):
         super().__init__(n, k)
         self.lambdas = []
-        for i in range(self.n + 1):
-            self.lambdas.append(1/(self.n + 1))
+        if lambdas == []:
+            for i in range(self.n + 1):
+                self.lambdas.append(1/(self.n + 1))
+        else:
+            if len(lst) == self.n + 1:
+                self.lambdas = lambdas
 
     # def get_vocab(self):
     #     pass
@@ -202,47 +211,113 @@ class NgramModelWithInterpolation(NgramModel):
 ################################################################################
 # Part 3: Your N-Gram Model Experimentation
 ################################################################################
-
-if __name__ == '__main__':
-    '''Possible ideas to consider:
+class StupidBackoff(NgramModelWithInterpolation):
+    '''stupid backoff
+    Possible ideas to consider:
     --utilizing a special end-of-text character
     --trying a new method for determining the vocab
     --improving how your model handles novel characters'''
+    
+    def __init__(self, n, k):
+        super().__init__(n, k)
+        pass
+    
+    '''this will be recursive!!
+    OMG WHAT ABOUT SMOOTHING'''
+    def probtest(self, context, char):
+        '''base case unigram thing..?'''
+        if len(context) == 0:
+            print("vocab count, size: ", str(self.vocab_count.get(char)), str(len(self.vocab_count)))
+            '''problem with vocab count for char- too big, because interpolation accounts
+            for all the lower order ngrams, which means vocab count increases too!'''
+            return self.vocab_count.get(char) / len(self.vocab_count)
 
-    # lookup = {0:'af', 1:'cn', 2:'de', 3:'fi', 4:'fr',
-    #           5:'in', 6:'ir', 7:'pk', 8:'za'}
+        if (context, char) in self.ngrams.keys():
+            print("ngram is a thing: ", context, char)
+            return self.ngrams.get((context, char)) / self.context_count.get(context)
+            '''for testing n=2 with context ~a and char b, this returned 1 when it
+            should've been approx 0.468'''
+        else:
+            '''can change alpha later'''
+            print("recurse on: ", context[1:])
+            return 0.4 * self.probtest(context[1:], char)  
 
-    # Load training data
-    directory = "train/" 
+
+def test_model(model, n, k):
+    # Create Models and train on the training data
     models_lst = []
-    files = listdir(directory)
+    files = listdir("train/")
     
     for i in range(0, len(files)):
-        models_lst.append(create_ngram_model_lines(NgramModel, directory + files[i]))
-
-    correct = 0
-    incorrect = 0
-    for i in range(len(files)):
-        lines = []
-        with open(directory + files[i], encoding='utf-8', errors='ignore') as f:
-            for line in f:
-                line = line.strip()
-                lines.append(line)
-        for line in lines:
-            min_perp = 100
-            best_idx = 0
-            for j in range(len(models_lst)):
-                model = models_lst[j]
-                curr_perp = model.perplexity(line)
-                if curr_perp < min_perp:
-                    min_perp = curr_perp
-                    best_idx = j
-            if best_idx == i:
-                correct += 1
-            else:
-                incorrect += 1
-        print('Percent Correct = ' + str(correct/(correct + incorrect)))
+        models_lst.append(create_ngram_model_lines(model, "train/" + files[i], n=n, k=k))
+        
+    def get_accuracies(directory):
+        # Get Model Accuracies
+        totalCorrect = 0
+        totalIncorrect = 0
         correct = 0
         incorrect = 0
 
+        result1 = ''
+        result2 = ''
 
+        for i in range(len(files)):
+            lines = []
+            with open(directory + files[i], encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+                    lines.append(line)
+            for line in lines:
+                min_perp = 100
+                best_idx = 0
+                for j in range(len(models_lst)):
+                    model = models_lst[j]
+                    curr_perp = model.perplexity(line)
+                    if curr_perp < min_perp:
+                        min_perp = curr_perp
+                        best_idx = j
+                if best_idx == i:
+                    correct += 1
+                else:
+                    incorrect += 1
+            percentCorrect = str(round(correct/(correct + incorrect), 3))
+            optAnd = '' if i == 4 or i == 8 else ' & '
+            if i < 5:
+                result1 += percentCorrect + optAnd
+            else:
+                result2 += percentCorrect + optAnd
+            
+            totalCorrect += correct
+            totalIncorrect += incorrect
+            correct = 0
+            incorrect = 0
+        return result1, result2, round(totalCorrect/ (totalCorrect + totalIncorrect), 3)
+    
+    trainRes1, trainRes2, total1 = get_accuracies("train/")
+    devRes1, devRes2, total2     = get_accuracies("val/")
+
+    l1 = "\\begin{tabular}{|c c c c c c|}\n" \
+                "\\hline\n" \
+                "Data & Afghanistan & China & Germany & Finland & France \\\\ [0.5ex]\n" \
+                "\\hline\\hline\n"
+
+    l1 += "Train & " + trainRes1 + "\\\\\n\\hline\n"
+    l1 += "Dev & " + devRes1 + "\\\\ [1ex]\n\\hline" \
+                        "\\end{tabular}\n\nTotal Accuracy: " + str(total1) + "\n\n"
+
+    l2 = "\n\\bigskip\n\n" \
+         "\\begin{tabular}{|c c c c c|}\n" \
+         "\\hline\n" \
+         "Data & India & Iran & Pakistan & South Africa \\\\ [0.5ex]\n" \
+         "\\hline\\hline\n"
+
+    l2 += "Train & " + trainRes2 + "\\\\\n\\hline\n"
+    l2 += "Dev & " + devRes2 + "\\\\ [1ex]\n\\hline" \
+                        "\\end{tabular}\n\nTotal Accuracy: " + str(total2) + "\n\n"
+    
+    return l1, l2
+
+if __name__ == '__main__':
+    s1, s2 = test_model(NgramModelWithInterpolation, 6, 0)
+    print(s1)
+    print(s2)
