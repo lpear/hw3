@@ -220,27 +220,16 @@ class StupidBackoff(NgramModelWithInterpolation):
     
     def __init__(self, n, k):
         super().__init__(n, k)
-        pass
     
-    '''this will be recursive!!
-    OMG WHAT ABOUT SMOOTHING'''
-    def probtest(self, context, char):
-        '''base case unigram thing..?'''
+    def prob(self, context, char):
+        '''base case unigram'''
         if len(context) == 0:
-            print("vocab count, size: ", str(self.vocab_count.get(char)), str(len(self.vocab_count)))
-            '''problem with vocab count for char- too big, because interpolation accounts
-            for all the lower order ngrams, which means vocab count increases too!'''
-            return self.vocab_count.get(char) / len(self.vocab_count)
-
+            freqChar = 0 if char not in self.vocab_count else self.vocab_count.get(char)
+            return freqChar / len(self.vocab_count)
         if (context, char) in self.ngrams.keys():
-            print("ngram is a thing: ", context, char)
             return self.ngrams.get((context, char)) / self.context_count.get(context)
-            '''for testing n=2 with context ~a and char b, this returned 1 when it
-            should've been approx 0.468'''
         else:
-            '''can change alpha later'''
-            print("recurse on: ", context[1:])
-            return 0.4 * self.probtest(context[1:], char)  
+            return 0.4 * self.prob(context[1:], char)  
 
 
 def test_model(model, n, k):
@@ -318,6 +307,6 @@ def test_model(model, n, k):
     return l1, l2
 
 if __name__ == '__main__':
-    s1, s2 = test_model(NgramModelWithInterpolation, 6, 0)
+    s1, s2 = test_model(StupidBackoff, 2, 0)
     print(s1)
     print(s2)
