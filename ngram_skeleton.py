@@ -83,8 +83,6 @@ class NgramModel(object):
 
     def prob(self, context, char):
         ''' Returns the probability of char appearing after context '''
-        ''' ngram(self.text, vocab.get(context+char) +k / count(all context) +k*V)'''
-        ''' stuff = ngram(self.n, self.text) '''
 
         V = len(self.vocab_count)
         if context not in self.context_count:
@@ -140,6 +138,7 @@ class NgramModel(object):
             this model '''
 
         text_ngram = ngrams(self.n, text)
+        N = len(text_ngram)
         sum_logs = 0
 
         for i in text_ngram:
@@ -148,9 +147,9 @@ class NgramModel(object):
                 return float('inf')
             sum_logs += math.log(1/ probability)
 
-        sum_logs = math.exp(sum_logs)
+        sum_logs *= 1/N
 
-        return math.pow(sum_logs, 1 / len(text_ngram)) 
+        return math.exp(sum_logs)
 
 ################################################################################
 # Part 2: N-Gram Model with Interpolation
@@ -167,9 +166,6 @@ class NgramModelWithInterpolation(NgramModel):
                 self.lambdas.append(1/(self.n + 1))
         else:
             self.lambdas = lambdas
-
-    # def get_vocab(self):
-    #     pass
 
     def update(self, text):
         # Generate update for n = 0 ... n
@@ -297,7 +293,7 @@ if __name__ == '__main__':
     # print(s1)
     # print(s2)
     
-    m = create_ngram_model(NgramModel, "shakespeare_input.txt", 1, 0)
+    m = create_ngram_model(NgramModel, "shakespeare_input.txt", 2, 1)
 
-    with open("shakespeare_input.txt", encoding='utf-8', errors='ignore') as f:
-        print(m.perplexity(f.read()))
+    with open("test_data/nytimes_article.txt", encoding='utf-8', errors='ignore') as f:
+        print(round(m.perplexity(f.read()), 3))
