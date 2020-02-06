@@ -27,7 +27,7 @@ def ngrams(n, text):
         i = i + 1
     return to_return
 
-def create_ngram_model(model_class, path, n=2, k=0):
+def create_ngram_model(model_class, path, n=2, k=0, lambdas=[]):
     ''' Creates and returns a new n-gram model trained on the city names
         found in the path file '''
     model = model_class(n, k)
@@ -35,10 +35,10 @@ def create_ngram_model(model_class, path, n=2, k=0):
         model.update(f.read())
     return model
 
-def create_ngram_model_lines(model_class, path, n=2, k=0):
+def create_ngram_model_lines(model_class, path, n=2, k=0, lambdas=[]):
     ''' Creates and returns a new n-gram model trained on the city names
         found in the path file '''
-    model = model_class(n, k)
+    model = model_class(n, k, lambdas)
     with open(path, encoding='utf-8', errors='ignore') as f:
         for line in f:
             model.update(line.strip())
@@ -51,7 +51,7 @@ def create_ngram_model_lines(model_class, path, n=2, k=0):
 class NgramModel(object):
     ''' A basic n-gram model using add-k smoothing '''
 
-    def __init__(self, n, k):
+    def __init__(self, n, k, lambdas = []):
         self.n = n
         self.k = k
         self.vocab_count = dict()
@@ -160,14 +160,13 @@ class NgramModelWithInterpolation(NgramModel):
     ''' An n-gram model with interpolation '''
 
     def __init__(self, n, k, lambdas = []):
-        super().__init__(n, k)
+        super().__init__(n, k, lambdas)
         self.lambdas = []
-        if lambdas == []:
+        if lambdas == [] or len(lambdas) != n + 1:
             for i in range(self.n + 1):
                 self.lambdas.append(1/(self.n + 1))
         else:
-            if len(lst) == self.n + 1:
-                self.lambdas = lambdas
+            self.lambdas = lambdas
 
     # def get_vocab(self):
     #     pass
@@ -200,26 +199,13 @@ class NgramModelWithInterpolation(NgramModel):
 
         return to_return
 
-    '''helper function to override lambdas'''   
-    def override_lambdas(self, lst):
-        sum_lam = 0
-        for weight in lst:
-            sum_lam += weight
-        if sum_lam == 1 and len(lst) == self.n + 1:
-            self.lambdas = lst
-
 ################################################################################
 # Part 3: Your N-Gram Model Experimentation
 ################################################################################
 class StupidBackoff(NgramModelWithInterpolation):
-    '''stupid backoff
-    Possible ideas to consider:
-    --utilizing a special end-of-text character
-    --trying a new method for determining the vocab
-    --improving how your model handles novel characters'''
-    
-    def __init__(self, n, k):
-        super().__init__(n, k)
+
+    def __init__(self, n, k, lambdas):
+        super().__init__(n, k, lambdas)
     
     def prob(self, context, char):
         '''base case unigram'''
@@ -232,13 +218,13 @@ class StupidBackoff(NgramModelWithInterpolation):
             return 0.4 * self.prob(context[1:], char)  
 
 
-def test_model(model, n, k):
+def test_model(model, n, k, lambdas=[]):
     # Create Models and train on the training data
     models_lst = []
     files = listdir("train/")
     
     for i in range(0, len(files)):
-        models_lst.append(create_ngram_model_lines(model, "train/" + files[i], n=n, k=k))
+        models_lst.append(create_ngram_model_lines(model, "train/" + files[i], n=n, k=k, lambdas=lambdas))
         
     def get_accuracies(directory):
         # Get Model Accuracies
@@ -307,6 +293,11 @@ def test_model(model, n, k):
     return l1, l2
 
 if __name__ == '__main__':
-    s1, s2 = test_model(StupidBackoff, 2, 0)
-    print(s1)
-    print(s2)
+    # s1, s2 = test_model(NgramModelWithInterpolation, 3, 2, lambdas=[0.25, 0.25, 0.25, 0.25])
+    # print(s1)
+    # print(s2)
+    
+    m = create_ngram_model(NgramModel, "shakespeare_input.txt", 1, 0)
+
+    with open("shakespeare_input.txt", encoding='utf-8', errors='ignore') as f:
+        print(m.perplexity(f.read()))
